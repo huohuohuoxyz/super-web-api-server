@@ -1,0 +1,92 @@
+name: 自动生成可执行文件并发布 Release
+
+# 触发条件：当推送以 'v' 开头的标签（语义化版本）时执行
+on:
+  push:
+    tags:
+      - "v*.*.*" # 匹配 v1.0.0、v2.1.3 等格式的标签
+
+jobs:
+  build-and-release:
+    name: Build, Package and Release
+    runs-on: ubuntu-latest # 使用 Ubuntu 环境（支持多平台交叉编译）
+    permissions:
+      contents: write # 允许写入仓库内容（创建 Release 需要）
+    env: # 定义工作流级环境变量
+      APP_NAME: super-web-api-server # 将重复值提取为变量
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout Code
+        uses: actions/checkout@v4 # 使用最新版 checkout Action
+
+      # 2. 设置 Go 环境（指定版本，需与项目 go.mod 一致）
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24.4" # 替换为你的项目所需 Go 版本
+
+      # 3. 获取版本信息（从标签中提取，如 v1.0.0 -> 1.0.0）
+      - name: Extract Version
+        id: extract_version
+        run: |
+          # 去掉标签前的 'v'，得到纯版本号（如 v1.0.0 -> 1.0.0）
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # 4. 编译多平台二进制文件（覆盖 Windows、Linux、macOS，amd64/arm64 架构）
+      - name: 编译多平台二进制文件
+        run: |
+          # 定义目标平台：os/arch 组合
+          TARGETS=(
+            "linux/amd64"
+            "linux/arm64"
+            "windows/amd64"
+            "darwin/amd64"
+            "darwin/arm64"
+          )
+
+          # 遍历目标平台，编译对应二进制文件
+          for target in "${TARGETS[@]}"; do
+            IFS='/' read -r os arch <<< "$target"
+            
+            # 设置环境变量，告知 Go 编译器目标平台
+            export GOOS=$os
+            export GOARCH=$arch
+            
+            # 生成二进制文件名（如 myapp-linux-amd64、myapp-windows-amd64.exe）
+            BINARY_NAME="${{ env.APP_NAME }}-${os}-${arch}"
+            if [ "$os" = "windows" ]; then
+              BINARY_NAME="${BINARY_NAME}.exe"  # Windows 二进制文件需加 .exe 后缀
+            fi
+            
+            # 编译项目（替换为你的项目路径，如 ./cmd/myapp）
+            echo "编译项目 for $os/$arch..."
+            go build -o "$BINARY_NAME"  # 替换 ./cmd/myapp 为你的主程序路径
+          done
+
+      # 5. 创建 GitHub Release 并上传二进制文件
+      - name: 创建 GitHub Release 并上传二进制文件
+        uses: softprops/action-gh-release@v1 # 第三方 Action，用于简化 Release 创建
+        with:
+          # 从步骤 3 获取的版本号
+          tag_name: v${{ steps.extract_version.outputs.version }}
+          # Release 标题（如 Release v1.0.0）
+          name: Release v${{ steps.extract_version.outputs.version }}
+          # Release 描述（可自定义，支持 Markdown）
+          body: |
+            请根据所在平台下载对应可执行文件,如果没有找到对应平台请联系开发者或自行编译
+
+          # 是否为草稿（设为 false 则直接发布）
+          draft: false
+          # 是否为预发布（设为 false 则为正式发布）
+          prerelease: false
+          # 要上传的二进制文件列表（步骤 4 生成的文件）
+          files: |
+            ${{ env.APP_NAME }}-linux-amd64
+            ${{ env.APP_NAME }}-linux-arm64
+            ${{ env.APP_NAME }}-windows-amd64.exe
+            ${{ env.APP_NAME }}-darwin-amd64
+            ${{ env.APP_NAME }}-darwin-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub 提供的默认 Token，用于认证
