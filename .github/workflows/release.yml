@@ -45,7 +45,6 @@ jobs:
             "darwin/amd64"
             "darwin/arm64"
           )
-
           # 遍历目标平台，编译对应二进制文件
           for target in "${TARGETS[@]}"; do
             IFS='/' read -r os arch <<< "$target"
@@ -53,6 +52,7 @@ jobs:
             # 设置环境变量，告知 Go 编译器目标平台
             export GOOS=$os
             export GOARCH=$arch
+            export CGO_ENABLED=0
             
             # 生成二进制文件名（如 myapp-linux-amd64、myapp-windows-amd64.exe）
             BINARY_NAME="${{ env.APP_NAME }}-${os}-${arch}"
