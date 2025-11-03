@@ -9,12 +9,11 @@ import (
 func main() {
 
 	// Module_webdav()
-
-	Module_proxy()
-
 	// Module_open()
 
+	Module_proxy()
 	http_listen()
+
 }
 
 func http_listen() {

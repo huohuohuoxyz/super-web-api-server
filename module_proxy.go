@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/Danny-Dasilva/CycleTLS/cycletls"
 	fhttp "github.com/Danny-Dasilva/fhttp"
@@ -22,10 +21,6 @@ func Module_proxy() {
 
 	http.HandleFunc("/proxy", func(w http.ResponseWriter, r *http.Request) {
 		targetURLStr := r.URL.Query().Get("url")
-
-		if r.Method == "PUT" {
-			fmt.Println("PUT请求")
-		}
 
 		fmt.Println("有新请求========="+targetURLStr, r.Method)
 
@@ -62,7 +57,20 @@ func Module_proxy() {
 			Body:   r.Body,
 		}
 
-		const headerPrefix = "huo-"
+		const headerPrefix = "huo-a"
+
+		var skipHeaders = map[string]bool{
+			// "content-length":     true,
+			"host":    true,
+			"origin":  true,
+			"referer": true,
+			// "connection":         true,
+			// "upgrade":            true,
+			// "proxy-authorize":    true,
+			// "proxy-authenticate": true,
+			// "transfer-encoding":  true,
+		}
+
 		// 遍历客户端请求头部
 		for key, values := range r.Header {
 			lowerKey := strings.ToLower(key)
@@ -93,7 +101,9 @@ func Module_proxy() {
 						fmt.Printf("[HUO-HEADER] Unknown operation '%s' for header '%s', treating as SET\n", operation, headerField)
 					}
 				}
-			} else if lowerKey != "content-length" {
+			} else if skipHeaders[lowerKey] {
+				fmt.Printf("跳过header '%s'\n", lowerKey)
+			} else {
 				for _, value := range values {
 					newRequest.Header.Add(key, value)
 				}
@@ -102,16 +112,16 @@ func Module_proxy() {
 
 		for key, values := range newRequest.Header {
 			for _, value := range values {
-				fmt.Printf("req Header: %s: %s\n", key, value)
+				fmt.Printf(">>>req Header: %s: %s\n", key, value)
 			}
 		}
 
 		userAgent := r.Header.Get("User-Agent")
 		fmt.Println("userAgent", userAgent)
-
+		fmt.Println("---------------------------------------------------------")
 		client := &fhttp.Client{
 			Transport: cycletls.NewTransport(chrome_ja3, userAgent),
-			Timeout:   30 * time.Second,
+			// Timeout:   30 * time.Second,
 		}
 
 		// 发送请求并获取响应
@@ -133,9 +143,10 @@ func Module_proxy() {
 		}
 		defer resp.Body.Close()
 
+		fmt.Println("<<<状态码:", resp.StatusCode)
 		for key, values := range resp.Header {
 			for _, value := range values {
-				fmt.Printf("res Header: %s: %s\n", key, value)
+				fmt.Printf("<<<res Header: %s: %s\n", key, value)
 				w.Header().Add(key, value)
 			}
 		}
