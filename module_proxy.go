@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/Danny-Dasilva/CycleTLS/cycletls"
@@ -42,25 +43,26 @@ func Module_proxy() {
 			return
 		}
 
-		// 解析目标 URL
-		targetURL, err := url.Parse(targetURLStr)
+		// 创建请求
+		newRequest, err := fhttp.NewRequest(r.Method, targetURLStr, r.Body)
 		if err != nil {
-			http.Error(w, "Invalid URL parameter", http.StatusBadRequest)
+			http.Error(w, "Failed to create request: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// 创建请求
-		newRequest := &fhttp.Request{
-			Method: r.Method,
-			URL:    targetURL,
-			Header: make(fhttp.Header),
-			Body:   r.Body,
+		contentLength := r.Header.Get("Content-Length")
+		if contentLength != "" {
+			length, err := strconv.ParseInt(contentLength, 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid Content-Length header", http.StatusBadRequest)
+				return
+			}
+			newRequest.ContentLength = length
 		}
 
-		const headerPrefix = "huo-a"
+		const headerPrefix = "huo-"
 
 		var skipHeaders = map[string]bool{
-			// "content-length":     true,
 			"host":    true,
 			"origin":  true,
 			"referer": true,
