@@ -41,6 +41,7 @@ func Module_proxy() {
 			"referer":    true,
 			"connection": true,
 			"upgrade":    true,
+			"cookie":     true,
 			// "content-length": true, //前面设置了conteng-length,如果再在header中设置,可能会出问题
 			"sec-fetch-dest": true,
 			"sec-fetch-site": true,
