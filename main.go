@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"super-web-api-server/proxy"
 )
 
 func main() {
@@ -11,7 +12,8 @@ func main() {
 	// Module_webdav()
 	// Module_open()
 
-	Module_proxy()
+	// Module_proxy2()
+	proxy.Module_proxy()
 	http_listen()
 
 }
