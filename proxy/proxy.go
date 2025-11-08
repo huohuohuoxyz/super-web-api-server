@@ -22,7 +22,7 @@ func Module_proxy() {
 		}
 
 		targetURLStr := r.URL.Query().Get("url")
-		fmt.Println("========有新请求========\n", targetURLStr, r.Method)
+		fmt.Println("!!!!!========有新请求========\n", targetURLStr, r.Method)
 		if targetURLStr == "" {
 			http.Error(w, "Missing 'url' parameter", http.StatusBadRequest)
 			return
