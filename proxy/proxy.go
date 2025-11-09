@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -34,17 +35,21 @@ func Module_proxy() {
 			return
 		}
 
+		if r.Header.Get("Content-Length") != "" {
+			length, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid Content-Length header", http.StatusBadRequest)
+				return
+			}
+			newRequest.ContentLength = length
+			//在header里面设置content-length会无效
+		}
+
 		const huoHeaderPrefix = "huo-"
 		var skipHeaders = map[string]bool{
-			"host":       true,
-			"origin":     true,
-			"referer":    true,
-			"connection": true,
-			"upgrade":    true,
-			"cookie":     true,
-			// "content-length": true, //前面设置了conteng-length,如果再在header中设置,可能会出问题
-			"sec-fetch-dest": true,
-			"sec-fetch-site": true,
+			"host":    true,
+			"origin":  true,
+			"referer": true,
 		}
 
 		// 复制header
